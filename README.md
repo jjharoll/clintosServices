@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Proyecto de Microservicios para Procesamiento de Facturas</title>
+ 
 </head>
 <body>
   <h1>Proyecto de Microservicios para Procesamiento de Facturas</h1>
