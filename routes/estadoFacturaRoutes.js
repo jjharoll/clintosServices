@@ -1,10 +1,19 @@
-// estadoFacturaRoutes.js
 const express = require('express');
+const router = express.Router();
 const estadoFacturaController = require('../controllers/estadoFacturaController');
 
-const router = express.Router();
+router.post('/', async (req, res) => {
+  try {
+    console.log(req.body);
+    const { numeroDocumento } = req.body;
 
-// Ruta para obtener el estado de factura
-router.post('/estadoFactura', estadoFacturaController.obtenerEstadoFactura);
+    const respuesta = await estadoFacturaController.consumirEndpointSOAP(numeroDocumento);
+
+    res.status(200).json(respuesta);
+  } catch (error) {
+    console.error('Ha ocurrido un error:', error.message);
+    res.status(500).json({ error: 'Ha ocurrido un error' });
+  }
+});
 
 module.exports = router;

@@ -9,8 +9,10 @@ const enviarCorreoRoutes = require('./routes/enviarCorreoRoutes');
 const app = express();
 
 // Configurar middlewares y otros ajustes de la aplicación
-
+// Middleware de análisis de cuerpo
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 
 // Usar las rutas correspondientes
 app.use('/api/enviarFactura', enviarFacturaRoutes);

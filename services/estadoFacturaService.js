@@ -1,10 +1,8 @@
-// estadoFacturaService.js
-const axios = require('axios');
-
 const obtenerEstadoFactura = (xmlData) => {
-  return axios.post('http://demoemision21v4.thefactoryhka.com.co/ws/v1.0/Service.svc?wsdl', xmlData, {
+  return axios.post('http://demoemision21.thefactoryhka.com.co/ws/v1.0/Service.svc', xmlData, {
     headers: {
-      'Content-Type': 'text/xml',
+      'Content-Type': 'text/xml; charset=utf-8',
+      'SOAPAction': 'http://tempuri.org/IService/EstadoDocumento'
     },
   })
     .then(response => {
