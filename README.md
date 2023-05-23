@@ -70,7 +70,6 @@
     <li>Inicia la aplicación: <code>node app.js</code> o <code>npm start</code>.</li>
     <li>Accede a la aplicación en tu navegador: <code>http://localhost:3000</code>.</li>
   </ol>
-  <p>Recuerda reemplazar <code>tu-usuario</code> y <code>tu-repositorio</code> con tu nombre de usuario y nombre de repositorio en GitHub, respectivamente.</p>
 
   <h3>Contribución</h3>
   <p>Si deseas contribuir a este proyecto, puedes realizar los siguientes pasos:</p>
