@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 // URL del endpoint
-const endpointURL = 'http://demoemision21.thefactoryhka.com.co/ws/adjuntos/Service.svc?wsdl';
+const endpointURL = 'http://demoemision21v4.thefactoryhka.com.co/ws/adjuntos/Service.svc?wsdl';
 
 // Servicio para radicar el adjunto
 const radicarAdjunto = (xmlData) => {

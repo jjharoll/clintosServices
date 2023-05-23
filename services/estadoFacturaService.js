@@ -1,14 +1,20 @@
-// Servicio para obtener el estado de la factura
-const obtenerEstadoFactura = (facturaId) => {
-    return new Promise((resolve, reject) => {
-      // Lógica para obtener el estado de la factura según el ID
-      // Supongamos que el estado se obtiene correctamente
-      const estado = 'finalizado';
-      resolve(estado);
+// estadoFacturaService.js
+const axios = require('axios');
+
+const obtenerEstadoFactura = (xmlData) => {
+  return axios.post('http://demoemision21v4.thefactoryhka.com.co/ws/v1.0/Service.svc?wsdl', xmlData, {
+    headers: {
+      'Content-Type': 'text/xml',
+    },
+  })
+    .then(response => {
+      // Procesar la respuesta
+      return response.data;
+    })
+    .catch(error => {
+      // Manejar el error
+      throw error;
     });
-  };
-  
-  module.exports = {
-    obtenerEstadoFactura,
-  };
-  
+};
+
+module.exports = obtenerEstadoFactura;

@@ -1,8 +1,10 @@
+// estadoFacturaRoutes.js
 const express = require('express');
-const router = express.Router();
 const estadoFacturaController = require('../controllers/estadoFacturaController');
 
-// Ruta para obtener el estado de la factura
-router.get('/:facturaId', estadoFacturaController.obtenerEstadoFactura);
+const router = express.Router();
+
+// Ruta para obtener el estado de factura
+router.post('/estadoFactura', estadoFacturaController.obtenerEstadoFactura);
 
 module.exports = router;

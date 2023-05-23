@@ -1,21 +1,26 @@
+// app.js
 const express = require('express');
-const app = express();
-
-// Middlewares y configuración
-app.use(express.json());
-
-// Rutas
+require('dotenv').config();
 const enviarFacturaRoutes = require('./routes/enviarFacturaRoutes');
 const adjuntoRoutes = require('./routes/adjuntoRoutes');
 const estadoFacturaRoutes = require('./routes/estadoFacturaRoutes');
 const enviarCorreoRoutes = require('./routes/enviarCorreoRoutes');
 
-app.use('/enviarFactura', enviarFacturaRoutes);
-app.use('/adjunto', adjuntoRoutes);
-app.use('/estadoFactura', estadoFacturaRoutes);
-app.use('/enviarCorreo', enviarCorreoRoutes);
+const app = express();
 
-// Inicio del servidor
+// Configurar middlewares y otros ajustes de la aplicación
+
+app.use(express.json());
+
+// Usar las rutas correspondientes
+app.use('/api/enviarFactura', enviarFacturaRoutes);
+app.use('/api/adjunto', adjuntoRoutes);
+app.use('/api/estadoFactura', estadoFacturaRoutes);
+app.use('/api/enviarCorreo', enviarCorreoRoutes);
+
+// Otros ajustes y configuraciones de la aplicación
+
+// Iniciar el servidor
 app.listen(3000, () => {
-  console.log('Servidor iniciado en el puerto 3000');
+  console.log('Servidor en ejecución en el puerto 3000');
 });
