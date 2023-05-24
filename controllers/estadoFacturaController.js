@@ -1,6 +1,12 @@
 const axios = require('axios');
 const sql = require('mssql');
-const consumirEndpointSOAP = async (tokenEmpresa,tokenPassword,numeroDocumento) => {
+
+const buscarNumeroDocumento = (body, numeroDocumento) => {
+  const regex = new RegExp(numeroDocumento, 'gi');
+  return body.match(regex);
+};
+
+const consumirEndpointSOAP = async (tokenEmpresa, tokenPassword, numeroDocumento) => {
   try {
     const endpoint = 'http://demoemision21.thefactoryhka.com.co/ws/v1.0/Service.svc';
 
@@ -18,17 +24,6 @@ const consumirEndpointSOAP = async (tokenEmpresa,tokenPassword,numeroDocumento) 
       </soapenv:Body>
    </soapenv:Envelope>`;
 
-    const config = {
-      headers: {
-        'Content-Type': 'text/xml; charset=utf-8',
-        'SOAPAction': 'http://tempuri.org/IService/EstadoDocumento'
-      },
-    };
-
-    const response = await axios.post(endpoint, xmlData, config);
-
-    // Procesar la respuesta
-    console.log(response.data);
     const dbConfig = {
       user: 'admin',
       password: 'admin123',
@@ -42,7 +37,6 @@ const consumirEndpointSOAP = async (tokenEmpresa,tokenPassword,numeroDocumento) 
         connectionTimeout: 30000 // Opcional: tiempo de espera de la conexión en milisegundos
       }
     };
-
     const pool = await sql.connect(dbConfig);
     console.log('Conexión establecida correctamente');
 
@@ -51,25 +45,62 @@ const consumirEndpointSOAP = async (tokenEmpresa,tokenPassword,numeroDocumento) 
       console.error('Error en la conexión a la base de datos:', err);
     });
 
+    const response = await axios.post(endpoint, xmlData, {
+      headers: {
+        'Content-Type': 'text/xml; charset=utf-8',
+        'SOAPAction': 'http://tempuri.org/IService/EstadoDocumento'
+      }
+    });
+
+    // Procesar la respuesta
+    console.log(response.data);
+
+    const numeroDocumentoEncontrado = buscarNumeroDocumento(response.data, numeroDocumento);
+    let intentos = 1;
+    let metodo = 'estadoFactura';
+    if (numeroDocumentoEncontrado) {
+      // Realizar consulta para obtener el número de intentos actual
+      const obtenerIntentosQuery = `
+        SELECT intentos
+        FROM [dbo].[logWS]
+        WHERE numeroDocumento = @numeroDocumento
+      `;
+      const obtenerIntentosRequest = new sql.Request(pool);
+      obtenerIntentosRequest.input('numeroDocumento', sql.NVarChar, numeroDocumento);
+      const obtenerIntentosResult = await obtenerIntentosRequest.query(obtenerIntentosQuery).catch(err => {
+        console.error('Error al obtener los intentos:', err);
+      });
+
+      if (obtenerIntentosResult.recordset.length > 0) {
+        intentos = obtenerIntentosResult.recordset[0].intentos + 1;
+      }
+    }
+
     const request = new sql.Request(pool);
     const query = `
       INSERT INTO [dbo].[logWS]
         ([fecha_consumo]
         ,[request]
         ,[response]
-        ,[intentos])
+        ,[intentos]
+        ,[metodo]
+        ,[numeroDocumento])
       VALUES
         (GETDATE()
         ,@xmlData
         ,@respuesta
-        ,1)
+        ,@intentos
+        ,'estadoFactura'
+        ,@numeroDocumento)
     `;
     request.input('xmlData', sql.NVarChar, xmlData);
     request.input('respuesta', sql.NVarChar, response.data);
+    request.input('intentos', sql.Int, intentos);
+    request.input('numeroDocumento', sql.NVarChar, numeroDocumento);
+    console.log(query);
     await request.query(query).catch(err => {
       console.error('Error al ejecutar la consulta SQL:', err);
     });
-    
 
     sql.close();
     return response.data;
@@ -79,7 +110,7 @@ const consumirEndpointSOAP = async (tokenEmpresa,tokenPassword,numeroDocumento) 
     throw new Error('Ha ocurrido un error');
   }
 };
-  
+
 module.exports = {
   consumirEndpointSOAP,
 };
