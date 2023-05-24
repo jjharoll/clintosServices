@@ -3,6 +3,7 @@ const express = require('express');
 require('dotenv').config();
 const amqp = require('amqplib');
 
+
 const enviarFacturaRoutes = require('./routes/enviarFacturaRoutes');
 const adjuntoRoutes = require('./routes/adjuntoRoutes');
 const estadoFacturaRoutes = require('./routes/estadoFacturaRoutes');
@@ -36,11 +37,15 @@ const consumeEstadoFacturaQueue = async () => {
 
     channel.consume(queue, async (message) => {
       const numeroDocumento = message.content.toString();
-      console.log('Mensaje recibido:', numeroDocumento);
+      const tokenEmpresa = message.content;
+      const tokenPassword = message.content;
+      console.log('Mensaje recibido numeroDocumento:', numeroDocumento);
+      console.log('Mensaje recibido tokenEmpresa:', tokenEmpresa);
+      console.log('Mensaje recibido tokenPassword: ', tokenPassword);
 
       try {
         // Procesar el mensaje utilizando el controlador o servicio de estadoFactura
-        await estadoFacturaController.consumirEndpointSOAP(numeroDocumento);
+        await estadoFacturaController.consumirEndpointSOAP(tokenEmpresa,tokenPassword,numeroDocumento);
         channel.ack(message); // Confirmar el mensaje como procesado exitosamente
       } catch (error) {
         console.error('Error al procesar el mensaje:', error);
