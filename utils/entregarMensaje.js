@@ -9,11 +9,13 @@ async function sendMessage() {
     const channel = await connection.createChannel();
 
     // Crear la cola si no existe
-    const queue = 'mi_cola';
-    await channel.assertQueue(queue, { durable: false });
+    const queue = 'envioFactura';
+    await channel.assertQueue(queue);
 
     // Enviar mensajes a la cola
-    const message = 'Hola, esto es un mensaje de prueba.';
+    const message = 'FCFE239';
+
+
     channel.sendToQueue(queue, Buffer.from(message));
 
     console.log('Mensaje enviado a la cola.');
