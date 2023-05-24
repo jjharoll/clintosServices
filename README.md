@@ -46,6 +46,7 @@
   - README.md            # Documentación del proyecto
   </pre>
 
+  
   <h3>Configuración</h3>
   <p>La configuración general de la aplicación se encuentra en el archivo <code>config/index.js</code>. Aquí se pueden establecer variables de entorno, datos de conexión a servicios externos y cualquier otra configuración relevante para el proyecto.</p>
 
