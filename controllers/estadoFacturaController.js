@@ -73,28 +73,41 @@ const consumirEndpointSOAP = async (tokenEmpresa, tokenPassword, numeroDocumento
 
       if (obtenerIntentosResult.recordset.length > 0) {
         intentos = obtenerIntentosResult.recordset[0].intentos + 1;
+      } else {
+        // Si el número de documento no existe en la base de datos, insertar un nuevo registro
+        const insertarIntentosQuery = `
+          INSERT INTO [dbo].[logWS]
+            ([fecha_consumo]
+            ,[request]
+            ,[response]
+            ,[intentos]
+            ,[metodo]
+            ,[numeroDocumento])
+          VALUES
+            (GETDATE()
+            ,@xmlData
+            ,@respuesta
+            ,@intentos
+            ,'estadoFactura'
+            ,@numeroDocumento)
+        `;
+        const insertarIntentosRequest = new sql.Request(pool);
+        insertarIntentosRequest.input('xmlData', sql.NVarChar, xmlData);
+        insertarIntentosRequest.input('respuesta', sql.NVarChar, response.data);
+        insertarIntentosRequest.input('intentos', sql.Int, intentos);
+        insertarIntentosRequest.input('numeroDocumento', sql.NVarChar, numeroDocumento);
+        await insertarIntentosRequest.query(insertarIntentosQuery).catch(err => {
+          console.error('Error al insertar los intentos:', err);
+        });
       }
     }
 
     const request = new sql.Request(pool);
     const query = `
-      INSERT INTO [dbo].[logWS]
-        ([fecha_consumo]
-        ,[request]
-        ,[response]
-        ,[intentos]
-        ,[metodo]
-        ,[numeroDocumento])
-      VALUES
-        (GETDATE()
-        ,@xmlData
-        ,@respuesta
-        ,@intentos
-        ,'estadoFactura'
-        ,@numeroDocumento)
+      UPDATE [dbo].[logWS]
+      SET intentos = @intentos
+      WHERE numeroDocumento = @numeroDocumento
     `;
-    request.input('xmlData', sql.NVarChar, xmlData);
-    request.input('respuesta', sql.NVarChar, response.data);
     request.input('intentos', sql.Int, intentos);
     request.input('numeroDocumento', sql.NVarChar, numeroDocumento);
     console.log(query);
