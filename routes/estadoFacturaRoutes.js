@@ -14,6 +14,6 @@ router.post('/', async (req, res) => {
     console.error('Ha ocurrido un error:', error.message);
     res.status(500).json({ error: 'Ha ocurrido un error' });
   }
-});
+}); 
 
 module.exports = router;

@@ -13,6 +13,6 @@ const obtenerEstadoFactura = (xmlData) => {
       // Manejar el error
       throw error;
     });
-};
+}; 
 
 module.exports = obtenerEstadoFactura;

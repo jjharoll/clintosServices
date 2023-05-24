@@ -35,7 +35,7 @@ const consumirEndpointSOAP = async (numeroDocumento) => {
     throw new Error('Ha ocurrido un error');
   }
 };
-
+  
 module.exports = {
   consumirEndpointSOAP,
 };

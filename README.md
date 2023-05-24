@@ -84,6 +84,6 @@
   <h3>Notas Finales</h3>
   <p>Este proyecto sigue las mejores prácticas de desarrollo en Node.js y Express, utilizando una arquitectura de microservicios para lograr una solución escalable y modular. Si tienes alguna pregunta o inquietud, no dudes en contactar al equipo de desarrollo.</p>
 
-  <p>¡Gracias por contribuir a este proyecto!</p>
+  <p>Unicia SAS</p>
 </body>
 </html>

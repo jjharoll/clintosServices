@@ -12,7 +12,7 @@ RUN npm install
 
 # Copia el resto de los archivos del proyecto a la carpeta de trabajo
 COPY . .
-
+ 
 # Expone el puerto en el que se ejecuta tu aplicación
 EXPOSE 3000
 
