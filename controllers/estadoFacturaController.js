@@ -44,23 +44,6 @@ const consumirEndpointSOAP = async (tokenEmpresa, tokenPassword, numeroDocumento
       console.error('Error en la conexión a la base de datos:', err);
     });
 
-    const obtenerObservacionQuery = `
-      SELECT observacion
-      FROM [dbo].[logWS]
-      WHERE numeroDocumento = @numeroDocumento
-    `;
-    const obtenerObservacionRequest = new sql.Request(pool);
-    obtenerObservacionRequest.input('numeroDocumento', sql.NVarChar, numeroDocumento);
-    const obtenerObservacionResult = await obtenerObservacionRequest.query(obtenerObservacionQuery).catch(err => {
-      console.error('Error al obtener la observación:', err);
-    });
-
-    if (obtenerObservacionResult.recordset.length > 0 && obtenerObservacionResult.recordset[0].observacion === 'Consumo correcto') {
-      console.log('El número de documento ya fue procesado anteriormente');
-      sql.close();
-      return 'El número de documento ya fue procesado anteriormente';
-    }
-
     const response = await axios.post(endpoint, xmlData, {
       headers: {
         'Content-Type': 'text/xml; charset=utf-8',
@@ -75,23 +58,22 @@ const consumirEndpointSOAP = async (tokenEmpresa, tokenPassword, numeroDocumento
     let metodo = 'estadoFactura';
     let observacion = '';
 
-    if (numeroDocumentoEncontrado) {
-      const obtenerIntentosQuery = `
-        SELECT intentos
-        FROM [dbo].[logWS]
-        WHERE numeroDocumento = @numeroDocumento
-      `;
-      const obtenerIntentosRequest = new sql.Request(pool);
-      obtenerIntentosRequest.input('numeroDocumento', sql.NVarChar, numeroDocumento);
-      const obtenerIntentosResult = await obtenerIntentosRequest.query(obtenerIntentosQuery).catch(err => {
-        console.error('Error al obtener los intentos:', err);
-      });
+    const obtenerIntentosQuery = `
+      SELECT intentos
+      FROM [dbo].[logWS]
+      WHERE numeroDocumento = @numeroDocumento
+    `;
+    const obtenerIntentosRequest = new sql.Request(pool);
+    obtenerIntentosRequest.input('numeroDocumento', sql.NVarChar, numeroDocumento);
+    const obtenerIntentosResult = await obtenerIntentosRequest.query(obtenerIntentosQuery).catch(err => {
+      console.error('Error al obtener los intentos:', err);
+    });
 
-      if (obtenerIntentosResult.recordset.length > 0) {
-        intentos = obtenerIntentosResult.recordset[0].intentos + 1;
-      } else {
-        observacion = 'Primer intento';
-      }
+    if (obtenerIntentosResult.recordset.length > 0) {
+      intentos = obtenerIntentosResult.recordset[0].intentos;
+      observacion = 'Intento existente';
+    } else {
+      observacion = 'Primer intento';
     }
 
     const request = new sql.Request(pool);
@@ -122,12 +104,14 @@ const consumirEndpointSOAP = async (tokenEmpresa, tokenPassword, numeroDocumento
       request.input('metodo', sql.NVarChar, metodo);
       request.input('observacion', sql.NVarChar, observacion);
     } else {
+      intentos++;
       observacion = 'No existe respuesta, por algún factor externo';
       query = `
         UPDATE [dbo].[logWS]
-        SET intentos = @intentos
+        SET intentos = @nuevosIntentos
         WHERE numeroDocumento = @numeroDocumento
       `;
+      request.input('nuevosIntentos', sql.Int, intentos);
     }
 
     request.input('xmlData', sql.NVarChar, xmlData);
