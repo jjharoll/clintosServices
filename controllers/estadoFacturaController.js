@@ -66,7 +66,6 @@ const consumirEndpointSOAP = async (tokenEmpresa,tokenPassword,numeroDocumento) 
     `;
     request.input('xmlData', sql.NVarChar, xmlData);
     request.input('respuesta', sql.NVarChar, response.data);
-    await request.query(query);
     await request.query(query).catch(err => {
       console.error('Error al ejecutar la consulta SQL:', err);
     });
