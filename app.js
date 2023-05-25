@@ -36,22 +36,24 @@ const consumeEstadoFacturaQueue = async () => {
     console.log('Esperando mensajes en la cola estadoFactura...');
 
     channel.consume(queue, async (message) => {
-      const numeroDocumento = message.content.toString();
-      const tokenEmpresa = message.content;
-      const tokenPassword = message.content;
+      const data = JSON.parse(message.content.toString()); // Parsear el contenido del mensaje como objeto JSON
+      const numeroDocumento = data.numeroDocumento;
+      const tokenEmpresa = data.tokenEmpresa;
+      const tokenPassword = data.tokenPassword;
       console.log('Mensaje recibido numeroDocumento:', numeroDocumento);
       console.log('Mensaje recibido tokenEmpresa:', tokenEmpresa);
       console.log('Mensaje recibido tokenPassword: ', tokenPassword);
-
+    
       try {
         // Procesar el mensaje utilizando el controlador o servicio de estadoFactura
-        await estadoFacturaController.consumirEndpointSOAP(tokenEmpresa,tokenPassword,numeroDocumento);
+        await estadoFacturaController.consumirEndpointSOAP(tokenEmpresa, tokenPassword, numeroDocumento);
         channel.ack(message); // Confirmar el mensaje como procesado exitosamente
       } catch (error) {
         console.error('Error al procesar el mensaje:', error);
         channel.nack(message); // Rechazar el mensaje para que vuelva a la cola
       }
     });
+    
   } catch (error) {
     console.error('Error al establecer conexión con RabbitMQ:', error);
   }
