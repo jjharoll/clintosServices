@@ -1,8 +1,9 @@
 // app.js
 const express = require('express');
-require('dotenv').config();
+const swaggerUi = require('swagger-ui-express');
+const YAML = require('yamljs');
 const amqp = require('amqplib');
-
+const bodyParser = require('body-parser');
 
 const enviarFacturaRoutes = require('./routes/enviarFacturaRoutes');
 const adjuntoRoutes = require('./routes/adjuntoRoutes');
@@ -12,7 +13,6 @@ const folioRestanteRoutes = require('./routes/folioRestanteRoutes');
 const descargaPdfRoutes = require('./routes/descargaPdfRoutes');
 const descargaXmlRoutes = require('./routes/descargaXmlRoutes');
 const estadoFacturaController = require('./controllers/estadoFacturaController');
-descargaXmlRoutes
 
 const app = express();
 
@@ -20,7 +20,14 @@ const app = express();
 // Middleware de análisis de cuerpo
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// app.use(bodyParser.urlencoded({ extended: true }));
+// app.use(bodyParser.json());
 
+// Ruta al archivo Swagger/OpenAPI YAML
+const swaggerDocument = YAML.load('./swagger.yaml');
+
+// Configurar y usar Swagger UI
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Usar las rutas correspondientes
 app.use('/api/enviarFactura', enviarFacturaRoutes);
@@ -28,8 +35,8 @@ app.use('/api/adjunto', adjuntoRoutes);
 app.use('/api/estadoFactura', estadoFacturaRoutes);
 app.use('/api/enviarCorreo', enviarCorreoRoutes);
 app.use('/api/foliosRestantes', folioRestanteRoutes);
-app.use('/api/descargaPdf',descargaPdfRoutes)
-app.use('/api/descargaXml',descargaXmlRoutes)
+app.use('/api/descargaPdf', descargaPdfRoutes);
+app.use('/api/descargaXml', descargaXmlRoutes);
 
 // Otros ajustes y configuraciones de la aplicación
 const consumeEstadoFacturaQueue = async () => {

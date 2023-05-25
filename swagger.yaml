@@ -1,0 +1,130 @@
+swagger: '2.0'
+info:
+  title: Servicios Clientes Unicia
+  version: 1.0.0
+basePath: /api
+schemes:
+  - https
+consumes:
+  - application/xml
+produces:
+  - application/xml
+paths:
+  /descargaPdf:
+    post:
+      summary: Descargar PDF
+      description: Permite descargar un archivo PDF relacionado con el número de documento proporcionado.
+      parameters:
+        - name: tokenEmpresa
+          in: formData
+          description: Token de autenticación de la empresa.
+          required: true
+          type: string
+        - name: tokenPassword
+          in: formData
+          description: Contraseña del token de autenticación.
+          required: true
+          type: string
+        - name: numeroDocumento
+          in: formData
+          description: Número de documento asociado al PDF.
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Respuesta exitosa
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+  /descargaXml:
+    post:
+      summary: Descargar XML
+      description: Permite descargar un archivo XML relacionado con el número de documento proporcionado.
+      parameters:
+        - name: tokenEmpresa
+          in: formData
+          description: Token de autenticación de la empresa.
+          required: true
+          type: string
+        - name: tokenPassword
+          in: formData
+          description: Contraseña del token de autenticación.
+          required: true
+          type: string
+        - name: numeroDocumento
+          in: formData
+          description: Número de documento asociado al XML.
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Respuesta exitosa
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+  /enviarCorreo:
+    post:
+      summary: Enviar correo
+      description: Envía un correo electrónico con adjuntos relacionados al número de documento proporcionado.
+      parameters:
+        - name: tokenEmpresa
+          in: formData
+          description: Token de autenticación de la empresa.
+          required: true
+          type: string
+        - name: tokenPassword
+          in: formData
+          description: Contraseña del token de autenticación.
+          required: true
+          type: string
+        - name: numeroDocumento
+          in: formData
+          description: Número de documento asociado al correo electrónico.
+          required: true
+          type: string
+        - name: correo
+          in: formData
+          description: Dirección de correo electrónico de destino.
+          required: true
+          type: string
+        - name: adjuntos
+          in: formData
+          description: Archivos adjuntos al correo electrónico.
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Respuesta exitosa
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+  /estadoFactura:
+    post:
+      summary: Estado de factura
+      description: Obtiene el estado actual de una factura mediante el número de documento proporcionado.
+      parameters:
+        - name: tokenEmpresa
+          in: formData
+          description: Token de autenticación de la empresa.
+          required: true
+          type: string
+        - name: tokenPassword
+          in: formData
+          description: Contraseña del token de autenticación.
+          required: true
+          type: string
+        - name: numeroDocumento
+          in: formData
+          description: Número de documento para consultar el estado de la factura.
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Respuesta exitosa
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+
+definitions:
+  SuccessResponse:
+    type: object
+    properties:
+      message:
+        type: string
+        description: Mensaje de éxito.
