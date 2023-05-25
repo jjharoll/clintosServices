@@ -37,7 +37,6 @@ const consumirEndpointSOAP = async (tokenEmpresa, tokenPassword, numeroDocumento
         connectionTimeout: 30000
       }
     };
-
     const pool = await sql.connect(dbConfig);
     console.log('Conexión establecida correctamente');
 
@@ -80,15 +79,40 @@ const consumirEndpointSOAP = async (tokenEmpresa, tokenPassword, numeroDocumento
     const request = new sql.Request(pool);
     let query = '';
 
-    intentos++; // Incrementar intentos en 1 en todos los casos
-    observacion = 'Intento adicional';
+    const estadoRespuesta = response.status === 200 && response.data.includes('<a:codigo>200</a:codigo>');
 
-    query = `
-      UPDATE [dbo].[logWS]
-      SET intentos = @nuevosIntentos
-      WHERE numeroDocumento = @numeroDocumento
-    `;
-    request.input('nuevosIntentos', sql.Int, intentos);
+    if (estadoRespuesta) {
+      observacion = 'Consumo correcto';
+      query = `
+        INSERT INTO [dbo].[logWS]
+          ([fecha_consumo]
+          ,[request]
+          ,[response]
+          ,[intentos]
+          ,[metodo]
+          ,[numeroDocumento]
+          ,[observacion])
+        VALUES
+          (GETDATE()
+          ,@xmlData
+          ,@respuesta
+          ,@intentos
+          ,@metodo
+          ,@numeroDocumento
+          ,@observacion)
+      `;
+      request.input('metodo', sql.NVarChar, metodo);
+      request.input('observacion', sql.NVarChar, observacion);
+    } else {
+      intentos++;
+      observacion = 'No existe respuesta, por algún factor externo';
+      query = `
+        UPDATE [dbo].[logWS]
+        SET intentos = @nuevosIntentos
+        WHERE numeroDocumento = @numeroDocumento
+      `;
+      request.input('nuevosIntentos', sql.Int, intentos);
+    }
 
     request.input('xmlData', sql.NVarChar, xmlData);
     request.input('respuesta', sql.NVarChar, response.data);
@@ -99,8 +123,7 @@ const consumirEndpointSOAP = async (tokenEmpresa, tokenPassword, numeroDocumento
       console.error('Error al ejecutar la consulta SQL:', err);
     });
 
-    await sql.close();
-
+    sql.close();
     return response.data;
   } catch (error) {
     console.error('Ha ocurrido un error:', error.message);
