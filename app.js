@@ -8,6 +8,7 @@ const enviarFacturaRoutes = require('./routes/enviarFacturaRoutes');
 const adjuntoRoutes = require('./routes/adjuntoRoutes');
 const estadoFacturaRoutes = require('./routes/estadoFacturaRoutes');
 const enviarCorreoRoutes = require('./routes/enviarCorreoRoutes');
+const folioRestanteRoutes = require('./routes/folioRestanteRoutes');
 const estadoFacturaController = require('./controllers/estadoFacturaController');
 
 
@@ -24,6 +25,7 @@ app.use('/api/enviarFactura', enviarFacturaRoutes);
 app.use('/api/adjunto', adjuntoRoutes);
 app.use('/api/estadoFactura', estadoFacturaRoutes);
 app.use('/api/enviarCorreo', enviarCorreoRoutes);
+app.use('/api/foliosRestantes', folioRestanteRoutes);
 
 // Otros ajustes y configuraciones de la aplicación
 const consumeEstadoFacturaQueue = async () => {
