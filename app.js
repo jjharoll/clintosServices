@@ -10,8 +10,9 @@ const estadoFacturaRoutes = require('./routes/estadoFacturaRoutes');
 const enviarCorreoRoutes = require('./routes/enviarCorreoRoutes');
 const folioRestanteRoutes = require('./routes/folioRestanteRoutes');
 const descargaPdfRoutes = require('./routes/descargaPdfRoutes');
+const descargaXmlRoutes = require('./routes/descargaXmlRoutes');
 const estadoFacturaController = require('./controllers/estadoFacturaController');
-
+descargaXmlRoutes
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use('/api/estadoFactura', estadoFacturaRoutes);
 app.use('/api/enviarCorreo', enviarCorreoRoutes);
 app.use('/api/foliosRestantes', folioRestanteRoutes);
 app.use('/api/descargaPdf',descargaPdfRoutes)
+app.use('/api/descargaXml',descargaXmlRoutes)
 
 // Otros ajustes y configuraciones de la aplicación
 const consumeEstadoFacturaQueue = async () => {
