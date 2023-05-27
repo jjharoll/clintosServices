@@ -1,7 +1,7 @@
 const axios = require('axios');
 const sql = require('mssql');
 
-const consumirEndpointSOAP = async (tokenEmpresa, tokenPassword, numeroDocumento) => {
+const consumirEndpointSOAP = async (tokenEmpresa, tokenPassword, numeroDocumento,usuarioConsumidor) => {
   try {
     const endpoint = 'http://demoemision21.thefactoryhka.com.co/ws/v1.0/Service.svc';
 
@@ -20,19 +20,21 @@ const consumirEndpointSOAP = async (tokenEmpresa, tokenPassword, numeroDocumento
 </soapenv:Envelope>`
 ;
 
-    const dbConfig = {
-      user: 'admin',
-      password: 'admin123',
-      server: 'clintos.czzdknftpzkc.us-east-2.rds.amazonaws.com',
-      database: 'servicios',
-      options: {
-        encrypt: true,
-        trustServerCertificate: true,
-        port: 1433,
-        requestTimeout: 30000,
-        connectionTimeout: 30000
-      }
-    };
+     // Verificar las credenciales de autenticación consultando la base de datos
+  const dbConfig = {
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    server: process.env.DB_SERVER,
+    database: process.env.DB_DATABASE,
+    options: {
+      encrypt: true,
+      trustServerCertificate: true,
+      port: 1433,
+      requestTimeout: 30000,
+      connectionTimeout: 30000
+    }
+  };
+  
     const pool = await sql.connect(dbConfig);
     console.log('Conexión establecida correctamente');
 
@@ -49,14 +51,27 @@ const consumirEndpointSOAP = async (tokenEmpresa, tokenPassword, numeroDocumento
 
     console.log(response.data);
     let metodo = 'descargaPdf';
-    let observacion = '';
+    // Expresión regular para extraer el valor de mensajeDocumento
+    const regex = /<a:mensaje>(.*?)<\/a:mensaje>/;
+    const match = response.data.match(regex);
+
+    let observacion; // Declarar la variable fuera del bloque if
+
+    // Verificar si se encontró una coincidencia
+    if (match && match[1]) {
+      const mensajeDocumento = match[1];
+      observacion = mensajeDocumento; // Asignar el valor a la variable observacion
+      console.log(observacion);
+    } else {
+      console.error('No se pudo encontrar el valor de mensajeDocumento en la respuesta.');
+    }
     let query = '';
     let intentos = '1';
 
     const estadoRespuesta = response.status === 200 && response.data.includes('<a:codigo>200</a:codigo>');
 
     if (estadoRespuesta) {
-      observacion = 'Descarga de PDF';
+      status = response.status;
       query = `
         INSERT INTO [dbo].[logWS]
           ([fecha_consumo]
@@ -65,7 +80,9 @@ const consumirEndpointSOAP = async (tokenEmpresa, tokenPassword, numeroDocumento
           ,[intentos]
           ,[metodo]
           ,[numeroDocumento]
-          ,[observacion])
+          ,[observacion]
+          ,[usuarioConsumidor]
+          ,[code_status])
         VALUES
           (GETDATE()
           ,@xmlData
@@ -73,10 +90,12 @@ const consumirEndpointSOAP = async (tokenEmpresa, tokenPassword, numeroDocumento
           ,@intentos
           ,@metodo
           ,@numeroDocumento
-          ,@observacion)
+          ,@observacion
+          ,@usuarioConsumidor
+          ,@status)
       `;
     } else {
-      observacion = 'Fallo al descarga el pdf';
+      status = response.status;
       query = `
         INSERT INTO [dbo].[logWS]
           ([fecha_consumo]
@@ -85,7 +104,9 @@ const consumirEndpointSOAP = async (tokenEmpresa, tokenPassword, numeroDocumento
           ,[intentos]
           ,[metodo]
           ,[numeroDocumento]
-          ,[observacion])
+          ,[observacion]
+          ,[usuarioConsumidor]
+          ,[code_status])
         VALUES
           (GETDATE()
           ,@xmlData
@@ -93,7 +114,9 @@ const consumirEndpointSOAP = async (tokenEmpresa, tokenPassword, numeroDocumento
           ,@intentos
           ,@metodo
           ,@numeroDocumento
-          ,@observacion)
+          ,@observacion
+          ,@usuarioConsumidor
+          ,@status)
       `;
     }
 
@@ -104,6 +127,8 @@ const consumirEndpointSOAP = async (tokenEmpresa, tokenPassword, numeroDocumento
     request.input('xmlData', sql.NVarChar, xmlData);
     request.input('respuesta', sql.NVarChar, response.data);
     request.input('numeroDocumento', sql.NVarChar, numeroDocumento);
+    request.input('usuarioConsumidor', sql.NVarChar, usuarioConsumidor);
+    request.input('status', sql.Int, status);
 
     await request.query(query).catch(err => {
       console.error('Error al ejecutar la consulta SQL:', err);

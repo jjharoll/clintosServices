@@ -1,7 +1,7 @@
 const axios = require('axios');
 const sql = require('mssql');
 
-const obtenerEstadoFactura = async (xmlData, numeroDocumento) => {
+const obtenerEstadoFactura = async (xmlData) => {
   try {
     const endpoint = 'http://demoemision21.thefactoryhka.com.co/ws/v1.0/Service.svc';
 

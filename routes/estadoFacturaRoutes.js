@@ -4,12 +4,10 @@ const estadoFacturaController = require('../controllers/estadoFacturaController'
 
 router.post('/', async (req, res) => {
   try {
-    console.log(req.body);
-    const { tokenEmpresa } = req.body;
-    const { tokenPassword } = req.body;
-    const { numeroDocumento } = req.body;
+    const { tokenEmpresa, tokenPassword, numeroDocumento } = req.body;
+    const usuarioConsumidor = req.usuarioConsumidor;
 
-    const respuesta = await estadoFacturaController.consumirEndpointSOAP(tokenEmpresa,tokenPassword,numeroDocumento);
+    const respuesta = await estadoFacturaController.consumirEndpointSOAP(tokenEmpresa, tokenPassword, numeroDocumento, usuarioConsumidor);
 
     res.status(200).json(respuesta);
   } catch (error) {

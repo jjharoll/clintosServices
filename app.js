@@ -1,3 +1,5 @@
+require('dotenv').config(); // Cargar las variables de entorno desde .env
+
 const express = require('express');
 const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
@@ -34,10 +36,10 @@ function authenticate(req, res, next) {
 
   // Verificar las credenciales de autenticación consultando la base de datos
   const dbConfig = {
-    user: 'admin',
-    password: 'admin123',
-    server: 'clintos.czzdknftpzkc.us-east-2.rds.amazonaws.com',
-    database: 'servicios',
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    server: process.env.DB_SERVER,
+    database: process.env.DB_DATABASE,
     options: {
       encrypt: true,
       trustServerCertificate: true,
@@ -86,21 +88,28 @@ const swaggerDocument = YAML.load('./swagger.yaml');
 // Configurar y usar Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
+// Middleware para agregar el usuario consumidor a la solicitud
+function agregarUsuarioConsumidor(req, res, next) {
+  const user = basicAuth(req);
+  const usuarioConsumidor = user && user.name ? user.name : null;
+  req.usuarioConsumidor = usuarioConsumidor;
+  next();
+}
+
+
 // Usar las rutas correspondientes
-app.use('/api/enviarFactura', authenticate, enviarFacturaRoutes);
-app.use('/api/adjunto', authenticate , adjuntoRoutes);
-app.use('/api/estadoFactura', authenticate ,estadoFacturaRoutes);
-app.use('/api/enviarCorreo', authenticate, enviarCorreoRoutes);
-app.use('/api/foliosRestantes', authenticate ,folioRestanteRoutes);
-app.use('/api/descargaPdf', authenticate, descargaPdfRoutes);
-app.use('/api/descargaXml', authenticate, descargaXmlRoutes);
+app.use('/api/enviarFactura', authenticate, agregarUsuarioConsumidor, enviarFacturaRoutes);
+app.use('/api/adjunto', authenticate, agregarUsuarioConsumidor, adjuntoRoutes);
+app.use('/api/estadoFactura', authenticate, agregarUsuarioConsumidor, estadoFacturaRoutes);
+app.use('/api/enviarCorreo', authenticate, agregarUsuarioConsumidor, enviarCorreoRoutes);
+app.use('/api/foliosRestantes', authenticate, agregarUsuarioConsumidor, folioRestanteRoutes);
+app.use('/api/descargaPdf', authenticate, agregarUsuarioConsumidor, descargaPdfRoutes);
+app.use('/api/descargaXml', authenticate, agregarUsuarioConsumidor, descargaXmlRoutes);
 
 // Otros ajustes y configuraciones de la aplicación
 const consumeEstadoFacturaQueue = async () => {
   try {
-    const connection = await amqp.connect(
-      'amqps://jharolperez:2456963Eithan*@b-14df11f4-84b4-4c45-80d0-93af86e77869.mq.us-east-2.amazonaws.com'
-    );
+    const connection = await amqp.connect(process.env.RABBITMQ_URL);
     const channel = await connection.createChannel();
 
     const queue = 'estadoFactura';
@@ -118,7 +127,12 @@ const consumeEstadoFacturaQueue = async () => {
 
       try {
         // Procesar el mensaje utilizando el controlador o servicio de estadoFactura
-        await estadoFacturaController.consumirEndpointSOAP(tokenEmpresa, tokenPassword, numeroDocumento);
+        await estadoFacturaController.consumirEndpointSOAPConUsuario(
+          message.properties.headers.usuarioConsumidor,
+          tokenEmpresa,
+          tokenPassword,
+          numeroDocumento
+        );
         channel.ack(message); // Confirmar el mensaje como procesado exitosamente
       } catch (error) {
         console.error('Error al procesar el mensaje:', error);

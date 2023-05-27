@@ -6,9 +6,9 @@ const { consumirEndpointSOAP } = require('../controllers/folioRestanteController
 router.post('/', async (req, res) => {
   try {
     const { tokenEmpresa, tokenPassword} = req.body;
-
+    const usuarioConsumidor = req.usuarioConsumidor;
     // Consumir el endpoint SOAP y obtener la respuesta
-    const respuesta = await consumirEndpointSOAP(tokenEmpresa, tokenPassword);
+    const respuesta = await consumirEndpointSOAP(tokenEmpresa, tokenPassword, usuarioConsumidor);
 
     // Responder con la respuesta obtenida
     res.send(respuesta);

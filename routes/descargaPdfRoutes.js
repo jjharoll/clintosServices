@@ -6,9 +6,9 @@ const { consumirEndpointSOAP } = require('../controllers/descargaPdfController')
 router.post('/', async (req, res) => {
   try {
     const { tokenEmpresa, tokenPassword, numeroDocumento} = req.body;
-
+    const usuarioConsumidor = req.usuarioConsumidor;
     // Consumir el endpoint SOAP y obtener la respuesta
-    const respuesta = await consumirEndpointSOAP(tokenEmpresa, tokenPassword, numeroDocumento);
+    const respuesta = await consumirEndpointSOAP(tokenEmpresa, tokenPassword, numeroDocumento, usuarioConsumidor);
 
     // Responder con la respuesta obtenida
     res.send(respuesta);

@@ -6,7 +6,7 @@ const buscarNumeroDocumento = (body, numeroDocumento) => {
   return body.match(regex);
 };
 
-const consumirEndpointSOAP = async (tokenEmpresa, tokenPassword, numeroDocumento, correo, adjuntos) => {
+const consumirEndpointSOAP = async (tokenEmpresa, tokenPassword, numeroDocumento, correo, adjuntos,usuarioConsumidor) => {
   try {
     const endpoint = 'http://demoemision21.thefactoryhka.com.co/ws/v1.0/Service.svc';
 
@@ -28,19 +28,20 @@ const consumirEndpointSOAP = async (tokenEmpresa, tokenPassword, numeroDocumento
       </soapenv:Body>
    </soapenv:Envelope>`;
 
-    const dbConfig = {
-      user: 'admin',
-      password: 'admin123',
-      server: 'clintos.czzdknftpzkc.us-east-2.rds.amazonaws.com',
-      database: 'servicios',
-      options: {
-        encrypt: true,
-        trustServerCertificate: true,
-        port: 1433,
-        requestTimeout: 30000,
-        connectionTimeout: 30000
-      }
-    };
+    // Verificar las credenciales de autenticación consultando la base de datos
+  const dbConfig = {
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    server: process.env.DB_SERVER,
+    database: process.env.DB_DATABASE,
+    options: {
+      encrypt: true,
+      trustServerCertificate: true,
+      port: 1433,
+      requestTimeout: 30000,
+      connectionTimeout: 30000
+    }
+  };
     const pool = await sql.connect(dbConfig);
     console.log('Conexión establecida correctamente');
 
@@ -60,7 +61,22 @@ const consumirEndpointSOAP = async (tokenEmpresa, tokenPassword, numeroDocumento
     const numeroDocumentoEncontrado = buscarNumeroDocumento(response.data, numeroDocumento);
     let intentos = 1;
     let metodo = 'EnvioCorreo';
-    let observacion = '';
+
+    console.log(response.data);
+    // Expresión regular para extraer el valor de mensajeDocumento
+    const regex = /<a:resultado>(.*?)<\/a:resultado>/;
+    const match = response.data.match(regex);
+
+    let observacion; // Declarar la variable fuera del bloque if
+
+    // Verificar si se encontró una coincidencia
+    if (match && match[1]) {
+      const mensajeDocumento = match[1];
+      observacion = mensajeDocumento; // Asignar el valor a la variable observacion
+      console.log(observacion);
+    } else {
+      console.error('No se pudo encontrar el valor de mensajeDocumento en la respuesta.');
+    }
 
     const obtenerIntentosQuery = `
       SELECT intentos
@@ -75,18 +91,15 @@ const consumirEndpointSOAP = async (tokenEmpresa, tokenPassword, numeroDocumento
 
     if (obtenerIntentosResult.recordset.length > 0) {
       intentos = obtenerIntentosResult.recordset[0].intentos;
-      observacion = 'Intento existente';
-    } else {
-      observacion = 'Primer intento';
-    }
-
+    
+    } 
     const request = new sql.Request(pool);
     let query = '';
 
     const estadoRespuesta = response.status === 200 && response.data.includes('<a:codigo>200</a:codigo>');
 
     if (estadoRespuesta) {
-      observacion = 'Correo enviado correctamente';
+      status = response.status;
       query = `
         INSERT INTO [dbo].[logWS]
           ([fecha_consumo]
@@ -95,7 +108,9 @@ const consumirEndpointSOAP = async (tokenEmpresa, tokenPassword, numeroDocumento
           ,[intentos]
           ,[metodo]
           ,[numeroDocumento]
-          ,[observacion])
+          ,[observacion]
+          ,[usuarioConsumidor]
+          ,[code_status])
         VALUES
           (GETDATE()
           ,@xmlData
@@ -103,13 +118,16 @@ const consumirEndpointSOAP = async (tokenEmpresa, tokenPassword, numeroDocumento
           ,@intentos
           ,@metodo
           ,@numeroDocumento
-          ,@observacion)
+          ,@observacion
+          ,@usuarioConsumidor
+          ,@status)
       `;
       request.input('metodo', sql.NVarChar, metodo);
       request.input('observacion', sql.NVarChar, observacion);
+      request.input('status', sql.Int, status);
+      request.input('usuarioConsumidor', sql.NVarChar, usuarioConsumidor);
     } else {
       intentos++;
-      observacion = 'Fallo el envio de correo';
       query = `
         INSERT INTO [dbo].[logWS]
           ([fecha_consumo]
@@ -118,7 +136,9 @@ const consumirEndpointSOAP = async (tokenEmpresa, tokenPassword, numeroDocumento
           ,[intentos]
           ,[metodo]
           ,[numeroDocumento]
-          ,[observacion])
+          ,[observacion]
+          ,[usuarioConsumidor]
+          ,[code_status])
         VALUES
           (GETDATE()
           ,@xmlData
@@ -126,12 +146,15 @@ const consumirEndpointSOAP = async (tokenEmpresa, tokenPassword, numeroDocumento
           ,@intentos
           ,@metodo
           ,@numeroDocumento
-          ,@observacion)
+          ,@observacion
+          ,@usuarioConsumidor
+          ,@status)
       `;
       request.input('metodo', sql.NVarChar, metodo);
       request.input('observacion', sql.NVarChar, observacion);
+      request.input('status', sql.Int, status);
+      request.input('usuarioConsumidor', sql.NVarChar, usuarioConsumidor);
     }
-
     request.input('xmlData', sql.NVarChar, xmlData);
     request.input('respuesta', sql.NVarChar, response.data);
     request.input('intentos', sql.Int, intentos);
