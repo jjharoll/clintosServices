@@ -98,7 +98,7 @@ function agregarUsuarioConsumidor(req, res, next) {
 
 
 // Usar las rutas correspondientes
-app.use('/api/enviarFactura', authenticate, agregarUsuarioConsumidor, enviarFacturaRoutes);
+app.use('/api/enviarFactura',authenticate,agregarUsuarioConsumidor, enviarFacturaRoutes);
 app.use('/api/adjunto', authenticate, agregarUsuarioConsumidor, adjuntoRoutes);
 app.use('/api/estadoFactura', authenticate, agregarUsuarioConsumidor, estadoFacturaRoutes);
 app.use('/api/enviarCorreo', authenticate, agregarUsuarioConsumidor, enviarCorreoRoutes);
