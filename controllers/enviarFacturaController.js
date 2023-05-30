@@ -1,12 +1,9 @@
 const axios = require('axios');
 const sql = require('mssql');
+const { verificarEndpoint } = require('../utils/validarEndpoint');
 
-// Función para enviar la factura
 const enviarFactura = async (xmlData, usuarioConsumidor) => {
   try {
-    const endpoint = 'http://demoemision21.thefactoryhka.com.co/ws/v1.0/Service.svc';
-
-    // Verificar las credenciales de autenticación consultando la base de datos
     const dbConfig = {
       user: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
@@ -28,13 +25,35 @@ const enviarFactura = async (xmlData, usuarioConsumidor) => {
       console.error('Error en la conexión a la base de datos:', err);
     });
 
-    // Realizar la solicitud POST al endpoint SOAP con el cuerpo y encabezados adecuados
-    const response = await axios.post(endpoint, xmlData, {
-      headers: {
-        'Content-Type': 'text/xml; charset=utf-8',
-        'SOAPAction': 'http://tempuri.org/IService/Enviar'
-      }
-    });
+    const endpoint = 'http://demoemision21.thefactoryhka.com.co/ws/v1.0/Service.svc2';
+
+    await verificarEndpoint(endpoint);
+    let response;
+
+    try {
+      response = await axios.post(endpoint, xmlData, {
+        headers: {
+          'Content-Type': 'text/xml; charset=utf-8',
+          'SOAPAction': 'http://tempuri.org/IService/Enviar'
+        }
+      });
+    } catch (error) {
+      response = {
+        status: 900,
+        data: `<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+        <s:Body>
+            <servicioUniciaResponse xmlns="http://tempuri.org/">
+                <servicioUniciaResult xmlns:a="http://schemas.datacontract.org/2004/07/ServiceSoap.UBL2._0.Response"
+                    xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+                    <a:codigo>900</a:codigo>
+                    <a:mensaje>No se logró comunicar con el proveedor theFactory, número de intentos 3 de consumo con 3 segundos</a:mensaje>
+                    <a:resultado>Error</a:resultado>
+                </servicioUniciaResult>
+            </servicioUniciaResponse>
+        </s:Body>
+      </s:Envelope>`
+      };
+    }
 
     console.log(response.data);
 
@@ -42,33 +61,31 @@ const enviarFactura = async (xmlData, usuarioConsumidor) => {
     let metodo = 'envioFactura';
     let query = '';
 
-    const estadoRespuesta = response.status === 200;
+    const isResponseSuccessful = response.status === 200;
 
-    // Expresión regular para extraer el valor de mensajeDocumento
-    const regex = /<a:mensaje>(.*?)<\/a:mensaje>/;
+    const regexMensajeDocumento = /<a:mensaje>(.*?)<\/a:mensaje>/;
     const regexStatus = /<a:codigo>(.*?)<\/a:codigo>/;
-    const match = response.data.match(regex);
-    const match1 = response.data.match(regexStatus);
-    let observacion; // Declarar la variable fuera del bloque if
+    const matchMensajeDocumento = response.data.match(regexMensajeDocumento);
+    const matchStatus = response.data.match(regexStatus);
+    let observacion;
     let status = '';
     let numeroDocumento = '';
-    // Verificar si se encontró una coincidencia
-    if (match && match[1]) {
-      const mensajeDocumento = match[1];
-      observacion = mensajeDocumento; // Asignar el valor a la variable observacion
+
+    if (matchMensajeDocumento && matchMensajeDocumento[1]) {
+      observacion = matchMensajeDocumento[1];
       console.log(observacion);
     } else {
       console.error('No se pudo encontrar el valor de mensajeDocumento en la respuesta.');
     }
-    if (match1 && match1[1]) {
-      const mensajeDocumento = match1[1];
-      status = mensajeDocumento; // Asignar el valor a la variable observacion
+
+    if (matchStatus && matchStatus[1]) {
+      status = matchStatus[1];
       console.log(status);
     } else {
       console.error('No se pudo encontrar el valor de estatus en la respuesta.');
     }
 
-    if (estadoRespuesta) {
+    if (isResponseSuccessful) {
       query = `
         INSERT INTO [dbo].[logWS]
           ([fecha_consumo]
@@ -117,7 +134,7 @@ const enviarFactura = async (xmlData, usuarioConsumidor) => {
       `;
     }
 
-    const request = new sql.Request(); // Crear una instancia de sql.Request
+    const request = pool.request();
     request.input('respuesta', sql.NVarChar, response.data);
     request.input('intentos', sql.Int, intentos);
     request.input('metodo', sql.NVarChar, metodo);
@@ -129,10 +146,76 @@ const enviarFactura = async (xmlData, usuarioConsumidor) => {
       console.error('Error al ejecutar la consulta SQL:', err);
     });
 
-    sql.close();
     return response.data;
   } catch (error) {
-    console.error('Ha ocurrido un error:', error.message);
+    return `<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+    <s:Body>
+        <servicioUniciaResponse xmlns="http://tempuri.org/">
+            <servicioUniciaResult xmlns:a="http://schemas.datacontract.org/2004/07/ServiceSoap.UBL2._0.Response"
+                xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+                <a:codigo>900</a:codigo>
+                <a:mensaje>No se logró comunicar con el proveedor theFactory, número de intentos 3 de consumo con 3 segundos</a:mensaje>
+                <a:resultado>Error</a:resultado>
+            </servicioUniciaResult>
+        </servicioUniciaResponse>
+    </s:Body>
+  </s:Envelope>`;
+  } finally {
+    const dbConfig = {
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      server: process.env.DB_SERVER,
+      database: process.env.DB_DATABASE,
+      options: {
+        encrypt: true,
+        trustServerCertificate: true,
+        port: 1433,
+        requestTimeout: 30000,
+        connectionTimeout: 30000
+      }
+    };
+
+    const pool = await sql.connect(dbConfig);
+    const query = `
+        INSERT INTO [dbo].[logWS]
+        ([fecha_consumo]
+        ,[request]
+        ,[response]
+        ,[intentos]
+        ,[metodo]
+        ,[numeroDocumento]
+        ,[observacion]
+        ,[usuarioConsumidor]
+        ,[code_status])
+        VALUES
+        (GETDATE()
+        ,''
+        ,'<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+        <s:Body>
+            <servicioUniciaResponse xmlns="http://tempuri.org/">
+                <servicioUniciaResult xmlns:a="http://schemas.datacontract.org/2004/07/ServiceSoap.UBL2._0.Response"
+                    xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+                    <a:codigo>900</a:codigo>
+                    <a:mensaje>No se logró comunicar con la Dian, número de intentos 3</a:mensaje>
+                    <a:resultado>Error</a:resultado>
+                </servicioUniciaResult>
+            </servicioUniciaResponse>
+        </s:Body>
+    </s:Envelope>'
+        ,'3'
+        ,'EnviarFactura'
+        ,''
+        ,'No se logró comunicar con la Dian, número de intentos 3'
+        ,@usuarioConsumidor
+        ,'900')
+      `;
+
+      const request = pool.request();
+      request.input('usuarioConsumidor', sql.NVarChar, usuarioConsumidor);
+      await request.query(query).catch(err => {
+        console.error('Error al ejecutar la consulta SQL:', err);
+      });
+    sql.close();
   }
 };
 

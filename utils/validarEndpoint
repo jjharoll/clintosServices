@@ -1,0 +1,97 @@
+"use strict";
+
+const http = require('http');
+const https = require('https');
+
+const ERROR_RESPONSE_XML = `<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+  <s:Body>
+      <servicioUniciaResponse xmlns="http://tempuri.org/">
+          <servicioUniciaResult xmlns:a="http://schemas.datacontract.org/2004/07/ServiceSoap.UBL2._0.Response"
+              xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+              <a:codigo>900</a:codigo>
+              <a:mensaje>No se logró comunicar con la DIAN, número de intentos {retries}</a:mensaje>
+              <a:resultado>Error</a:resultado>
+          </servicioUniciaResult>
+      </servicioUniciaResponse>
+  </s:Body>
+</s:Envelope>`;
+
+const makeRequest = (httpModule, endpointUrl, options, retryDelay, maxRetries, retries = 0) => {
+  return new Promise((resolve, reject) => {
+    const request = httpModule.get(endpointUrl, options, (response) => {
+      let responseData = '';
+
+      response.on('data', (chunk) => {
+        responseData += chunk;
+      });
+
+      response.on('end', () => {
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          resolve('El endpoint está arriba');
+        } else {
+          if (responseData.includes('Mensaje de error esperado')) {
+            resolve('El endpoint está arriba (aunque devolvió un mensaje de error)');
+          } else {
+            if (retries < maxRetries) {
+              retries++;
+              console.log(`Intento ${retries}: El endpoint está abajo. Reintentando en ${retryDelay / 1000} segundos.`);
+              setTimeout(() => {
+                makeRequest(httpModule, endpointUrl, options, retryDelay, maxRetries, retries)
+                  .then(resolve)
+                  .catch(reject);
+              }, retryDelay);
+            } else {
+              console.error(ERROR_RESPONSE_XML.replace('{retries}', retries.toString()));
+              reject(new Error(`No se pudo conectar al endpoint después de ${retries} intentos`));
+            }
+          }
+        }
+      });
+    });
+
+    request.on('error', (error) => {
+      if (retries < maxRetries) {
+        retries++;
+        console.log(`Intento ${retries}: Error al comunicarse con el endpoint. Reintentando en ${retryDelay / 1000} segundos.`);
+        setTimeout(() => {
+          makeRequest(httpModule, endpointUrl, options, retryDelay, maxRetries, retries)
+            .then(resolve)
+            .catch(reject);
+        }, retryDelay);
+      } else {
+        reject(error);
+      }
+    });
+
+    request.on('timeout', () => {
+      request.abort();
+      if (retries < maxRetries) {
+        retries++;
+        console.log(`Intento ${retries}: El endpoint no respondió dentro del tiempo establecido. Reintentando en ${retryDelay / 1000} segundos.`);
+        setTimeout(() => {
+          makeRequest(httpModule, endpointUrl, options, retryDelay, maxRetries, retries)
+            .then(resolve)
+            .catch(reject);
+        }, retryDelay);
+      } else {
+        console.error(ERROR_RESPONSE_XML.replace('{retries}', retries.toString()));
+        reject(new Error(`No se pudo conectar al endpoint después de ${retries} intentos`));
+      }
+    });
+  });
+};
+
+function verificarEndpoint(endpointUrl, retryDelay = 3000, maxRetries = 3) {
+  const options = {
+    method: 'GET',
+    timeout: 5000
+  };
+
+  const httpModule = endpointUrl.startsWith('https') ? https : http;
+
+  return makeRequest(httpModule, endpointUrl, options, retryDelay, maxRetries);
+}
+
+module.exports = {
+  verificarEndpoint
+};
