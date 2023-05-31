@@ -8,6 +8,7 @@ const basicAuth = require('basic-auth');
 const mssql = require('mssql');
 const crypto = require('crypto');
 const { parseStringPromise } = require('xml2js');
+const cors = require('cors'); // Agregar el módulo CORS
 
 
 const enviarFacturaRoutes = require('./routes/enviarFacturaRoutes');
@@ -19,6 +20,7 @@ const descargaPdfRoutes = require('./routes/descargaPdfRoutes');
 const descargaXmlRoutes = require('./routes/descargaXmlRoutes');
 
 const app = express();
+app.use(cors()); // Agregar el middleware CORS
 
 // Configurar middlewares y otros ajustes de la aplicación
 // Middleware de análisis de cuerpo

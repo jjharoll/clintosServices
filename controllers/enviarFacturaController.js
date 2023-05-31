@@ -25,7 +25,7 @@ const enviarFactura = async (xmlData, usuarioConsumidor) => {
       console.error('Error en la conexión a la base de datos:', err);
     });
 
-    const endpoint = 'http://demoemision21.thefactoryhka.com.co/ws/v1.0/Service.svc';
+    const endpoint = 'http://demoemision21.thefactoryhka.com.co/ws/v1.0/Service.svc2';
 
     await verificarEndpoint(endpoint);
     let response;
