@@ -25,7 +25,7 @@ const enviarFactura = async (xmlData, usuarioConsumidor) => {
       console.error('Error en la conexión a la base de datos:', err);
     });
 
-    const endpoint = 'http://demoemision21.thefactoryhka.com.co/ws/v1.0/Service.svc2';
+    const endpoint = 'http://demoemision21.thefactoryhka.com.co/ws/v1.0/Service.svc';
 
     await verificarEndpoint(endpoint);
     let response;
@@ -58,7 +58,7 @@ const enviarFactura = async (xmlData, usuarioConsumidor) => {
     console.log(response.data);
 
     let intentos = 1;
-    let metodo = 'envioFactura';
+    let metodo = 'EnviarFactura';
     let query = '';
 
     const isResponseSuccessful = response.status === 200;
@@ -176,6 +176,7 @@ const enviarFactura = async (xmlData, usuarioConsumidor) => {
     };
 
     const pool = await sql.connect(dbConfig);
+    const request = pool.request();
     const query = `
         INSERT INTO [dbo].[logWS]
         ([fecha_consumo]
@@ -196,7 +197,7 @@ const enviarFactura = async (xmlData, usuarioConsumidor) => {
                 <servicioUniciaResult xmlns:a="http://schemas.datacontract.org/2004/07/ServiceSoap.UBL2._0.Response"
                     xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
                     <a:codigo>900</a:codigo>
-                    <a:mensaje>No se logró comunicar con la Dian, número de intentos 3</a:mensaje>
+                    <a:mensaje>No se logró comunicar con theFactory, número de intentos 3</a:mensaje>
                     <a:resultado>Error</a:resultado>
                 </servicioUniciaResult>
             </servicioUniciaResponse>
@@ -205,12 +206,12 @@ const enviarFactura = async (xmlData, usuarioConsumidor) => {
         ,'3'
         ,'EnviarFactura'
         ,''
-        ,'No se logró comunicar con la Dian, número de intentos 3'
+        ,'No se logró comunicar con la TheFactory, número de intentos 3'
         ,@usuarioConsumidor
         ,'900')
       `;
 
-      const request = pool.request();
+      
       request.input('usuarioConsumidor', sql.NVarChar, usuarioConsumidor);
       await request.query(query).catch(err => {
         console.error('Error al ejecutar la consulta SQL:', err);

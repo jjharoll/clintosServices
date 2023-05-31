@@ -7,6 +7,8 @@ const amqp = require('amqplib');
 const basicAuth = require('basic-auth');
 const mssql = require('mssql');
 const crypto = require('crypto');
+const { parseStringPromise } = require('xml2js');
+
 
 const enviarFacturaRoutes = require('./routes/enviarFacturaRoutes');
 const adjuntoRoutes = require('./routes/adjuntoRoutes');
@@ -15,7 +17,6 @@ const enviarCorreoRoutes = require('./routes/enviarCorreoRoutes');
 const folioRestanteRoutes = require('./routes/folioRestanteRoutes');
 const descargaPdfRoutes = require('./routes/descargaPdfRoutes');
 const descargaXmlRoutes = require('./routes/descargaXmlRoutes');
-const estadoFacturaController = require('./controllers/estadoFacturaController');
 
 const app = express();
 
@@ -96,9 +97,8 @@ function agregarUsuarioConsumidor(req, res, next) {
   next();
 }
 
-
 // Usar las rutas correspondientes
-app.use('/api/enviarFactura',authenticate,agregarUsuarioConsumidor, enviarFacturaRoutes);
+app.use('/api/enviarFactura', authenticate, agregarUsuarioConsumidor, enviarFacturaRoutes);
 app.use('/api/adjunto', authenticate, agregarUsuarioConsumidor, adjuntoRoutes);
 app.use('/api/estadoFactura', authenticate, agregarUsuarioConsumidor, estadoFacturaRoutes);
 app.use('/api/enviarCorreo', authenticate, agregarUsuarioConsumidor, enviarCorreoRoutes);
@@ -112,39 +112,116 @@ const consumeEstadoFacturaQueue = async () => {
     const connection = await amqp.connect(process.env.RABBITMQ_URL);
     const channel = await connection.createChannel();
 
-    const queue = 'estadoFactura';
-    await channel.assertQueue(queue);
-    console.log('Esperando mensajes en la cola estadoFactura...');
+    const methodQueueMap = {
+      // Aquí puedes definir la relación entre cada método y la cola correspondiente
+      metodo1: 'enviarFactura',
+      metodo2: 'estadoFactura',
+      metodo3: 'enviarCorreo',
+      metodo4: 'foliosRestantes',
+      metodo5: 'descargaPdf',
+      metodo6: 'descargaXml'
+    };
 
-    channel.consume(queue, async (message) => {
-      const data = JSON.parse(message.content.toString()); // Parsear el contenido del mensaje como objeto JSON
-      const numeroDocumento = data.numeroDocumento;
-      const tokenEmpresa = data.tokenEmpresa;
-      const tokenPassword = data.tokenPassword;
-      console.log('Mensaje recibido numeroDocumento:', numeroDocumento);
-      console.log('Mensaje recibido tokenEmpresa:', tokenEmpresa);
-      console.log('Mensaje recibido tokenPassword: ', tokenPassword);
+    const methods = Object.keys(methodQueueMap);
 
-      try {
-        // Procesar el mensaje utilizando el controlador o servicio de estadoFactura
-        await estadoFacturaController.consumirEndpointSOAPConUsuario(
-          message.properties.headers.usuarioConsumidor,
-          tokenEmpresa,
-          tokenPassword,
-          numeroDocumento
-        );
-        channel.ack(message); // Confirmar el mensaje como procesado exitosamente
-      } catch (error) {
-        console.error('Error al procesar el mensaje:', error);
-        channel.nack(message); // Rechazar el mensaje para que vuelva a la cola
-      }
-    });
+    for (const method of methods) {
+      const queue = methodQueueMap[method];
+      await channel.assertQueue(queue);
+      console.log(`Esperando mensajes en la cola ${queue} para el método ${method}...`);
+      
+      channel.consume(queue, async (message) => {
+        // const data = JSON.parse(message.content.toString()); // Parsear el contenido del mensaje como objeto JSON
+        // console.log(`Mensaje recibido para el método ${method}:`, data);
+        
+        try {
+          // Procesar el mensaje utilizando el controlador o servicio correspondiente al método
+          switch (method) {
+            case 'metodo1': {
+              const enviarFacturaController = require('./controllers/enviarFacturaController');
+              const data = await parseStringPromise(message.content && message.content.toString(), { explicitArray: false });
+              console.log(`Mensaje recibido para el método ${method}:`, data);
+              await enviarFacturaController.enviarFactura(data,message.properties.headers.usuarioConsumidor);
+              break;
+            }
+            case 'metodo2':
+              const estadoFacturaController = require('./controllers/estadoFacturaController');
+              const data = JSON.parse(message.content.toString()); // Parsear el contenido del mensaje como objeto JSON
+              console.log(`Mensaje recibido para el método ${method}:`, data);
+              await estadoFacturaController.consumirEndpointSOAP(
+                data.tokenEmpresa,
+                data.tokenPassword,
+                data.numeroDocumento,
+                'RabbitMQ',
+              );
+              break;
+            case 'metodo3': {
+              const enviarCorreoController = require('./controllers/enviarCorreoController');
+              const data = JSON.parse(message.content.toString()); // Parsear el contenido del mensaje como objeto JSON
+              console.log(`Mensaje recibido para el método ${method}:`, data);
+              await enviarCorreoController.consumirEndpointSOAP(
+                data.tokenEmpresa,
+                data.tokenPassword,
+                data.numeroDocumento,
+                data.correo,
+                data.adjuntos,
+              'RabbitMQ'
+              );
+              break;
+            }
+            case 'metodo4': {
+              const folioRestanteController = require('./controllers/folioRestanteController');
+              const data = JSON.parse(message.content.toString()); // Parsear el contenido del mensaje como objeto JSON
+              console.log(`Mensaje recibido para el método ${method}:`, data);
+              await folioRestanteController.consumirEndpointSOAP(
+                data.tokenEmpresa,
+                data.tokenPassword,
+                'RabbitMQ'
+              );
+              break;
+            }
+            case 'metodo5': {
+              const descargaPdfController = require('./controllers/descargaPdfController');
+              const data = JSON.parse(message.content.toString()); // Parsear el contenido del mensaje como objeto JSON
+              console.log(`Mensaje recibido para el método ${method}:`, data);
+              await descargaPdfController.consumirEndpointSOAP(
+                data.tokenEmpresa,
+                data.tokenPassword,
+                data.numeroDocumento,
+                'RabbitMQ'
+              );
+              break;
+            }
+            case 'metodo6': {
+              const descargaXmlController = require('./controllers/descargaXmlController');
+              const data = JSON.parse(message.content.toString()); // Parsear el contenido del mensaje como objeto JSON
+              console.log(`Mensaje recibido para el método ${method}:`, data);
+              await descargaXmlController.consumirEndpointSOAP(
+                data.tokenEmpresa,
+                data.tokenPassword,
+                data.numeroDocumento,
+                'RabbitMQ'
+              );
+              break;
+            }
+            default:
+              console.error(`Método desconocido: ${method}`);
+              channel.nack(message); // Rechazar el mensaje para que vuelva a la cola
+              return;
+          }
+
+          channel.ack(message); // Confirmar el mensaje como procesado exitosamente
+        } catch (error) {
+          console.error(`Error al procesar el mensaje para el método ${method}:`, error);
+          channel.nack(message); // Rechazar el mensaje para que vuelva a la cola
+        }
+      });
+    }
   } catch (error) {
     console.error('Error al establecer conexión con RabbitMQ:', error);
   }
 };
 
-// Consumir la cola de RabbitMQ al iniciar el servidor
+// Consumir las colas de RabbitMQ al iniciar el servidor
 consumeEstadoFacturaQueue();
 
 // Iniciar el servidor
